@@ -1,0 +1,561 @@
+---
+title: "Normal Distribution for GitHub"
+author: "Enrique Delamonica"
+date: "2026-10-04"
+output: github_document
+---
+
+## Preliminaries
+These are a few commands to include the libraries and data to be used. I find it useful to  see the errors and allow RMarkdown to continue knitting when there are errors. Thus, I included "error = TRUE".
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+```{r libraries}
+library(tidyverse)
+library(openintro)
+```
+
+
+```{r viewing the data}
+ data('fastfood', package='openintro')
+head(fastfood)
+```
+
+From all the available restaurants, the instructions ask us to select McDonald's and Dairy Queen using the filter command.
+
+```{r choosing resaurants}
+mcdonalds <- fastfood |>
+filter(restaurant == "Mcdonalds")
+dairy_queen <- fastfood |>
+     filter(restaurant == "Dairy Queen")
+```
+
+## Exercise 1: Make a plot (or plots) to visualize the distributions of the amount of calories from fat of the options from these two restaurants. How do their centers, shapes, and spreads compare?
+First, I calculated the values of the mean and standard deviation for each of the two restaurants (Dairy Queen and McDonald's)
+
+```{r}
+dqmean <- mean(dairy_queen$cal_fat)
+dqsd   <- sd(dairy_queen$cal_fat)
+dqmean
+dqsd
+```
+
+
+```{r}
+MDmean <- mean(mcdonalds$cal_fat)
+MDsd   <- sd(mcdonalds$cal_fat)
+MDmean
+MDsd
+```
+Then, I plot density histograms for each of them.As the variable calories from fat is continuous, probabilities cannot be assigned to specific values but to ranges of values.
+
+
+```{r}
+ggplot(data = dairy_queen, aes(x = cal_fat)) +
+geom_blank() +
+geom_histogram(aes(y = ..density..)) +
+stat_function(fun = dnorm, args = c(mean = dqmean, sd = dqsd), col = "tomato")
+```
+
+
+Although for Dairy Queen the density of calories from fat seems to peak short of the mean (260), the distribution is roughly symmetrical. The density at either extreme is low. A bit more than half of the distribution seems to be between the values  of 104 (the mean minus one standard deviation) and 416 (the mean plus one standard deviation). Theoretically, this range should encapsulate roughly two thirds of the distribution.
+
+```{r}
+ggplot(data = mcdonalds, aes(x = cal_fat)) +
+geom_blank() +
+geom_histogram(aes(y = ..density..)) +
+stat_function(fun = dnorm, args = c(mean = MDmean, sd = MDsd), col = "tomato")
+```
+
+
+The distribution of calories from fat for McDonald's is clearly not symmetrical. While the distribution does seem to peak around 285 (the mean), it seems almost all the distribution is between 65 (the mean minus one standard deviation) and 505 (the mean plus one standard deviation). 
+```
+stat_bin()` using `bins = 30`. Pick better value `binwidth`.
+Warning message:
+The dot-dot notation (`..density..`) was deprecated in ggplot2 3.4.0.
+ℹ Please use `after_stat(density)` instead.
+This warning is displayed once per session.
+Call lifecycle::last_lifecycle_warnings() to see where this warning was
+generated.
+```
+## Exercise 2: Based on the this plot, does it appear that the data follow a nearly normal distribution?
+
+Based on the visual description of the two plots. The calories from fat in Dairy Queen are close to a normal distribution. However for McDonald's, it does not. The asymmetry and the density within minus/plus one standard deviation around the mean are not consistent with a normal distribution.
+
+Moreover, two further plots are consistent with these results. For Dairy Queen the QQ plot shows a line going diagonally roughly through the middle (with some deviations toward sthe upper end of the line). However, for McDonald's the line is not in the middle.
+
+```{r}
+ggplot(data = dairy_queen, aes(sample = cal_fat)) + 
+geom_line(stat = "qq")
+```
+
+
+
+```{r another plot}
+ggplot(data = mcdonalds, aes(sample = cal_fat)) + 
+    geom_line(stat = "qq")
+```
+
+## Exercise 3: Make a normal probability plot of sim_norm. Do all of the points fall on the line? How does this plot compare to the probability plot for the real data?(Since sim_norm is not a data frame, it can be put directly into the sample argument and the data argument can be dropped.)
+
+```{r}
+sim_norm <- rnorm(n = nrow(dairy_queen), mean = dqmean, sd = dqsd)
+```
+
+```{r}
+qqnormsim(sample = cal_fat, data = dairy_queen)
+```
+
+For Dairy Queen the simulated lines look similar to the empirical one (the first one on  the first row). In other words, the 'real data' and the simulations are similar.
+
+## Exercise 4: Does the normal probability plot for the calories from fat look similar to the plots created for the simulated data? That is, do the plots provide evidence that the calories are nearly normal?
+
+Yes, the plots are similar. This is further confirmation the distribution of calories from fat in items found at the Dairy Queen menu is close to a normal one.
+
+## Exercise 5: Using the same technique, determine whether or not the calories from McDonald’s menu appear to come from a normal distribution.
+
+```{r}
+sim_norm <- rnorm(n = nrow(mcdonalds), mean = MDmean, sd = MDsd)
+```
+
+```{r}
+qqnormsim(sample = cal_fat, data = mcdonalds)
+```
+
+In this case, further corroborating what was observed in previous questions, the curve based on 'real data' is not very similar to the curves based on simulations from a normal distribution with the same parameters (mean and standard deviation). The the content of calories from fat in the McDonald's menu does not seem to come from a normal distribution.
+
+
+## Exercise 6: Write out two probability questions that you would like to answer about any of the restaurants in this dataset. Calculate those probabilities using both the theoretical normal distribution as well as the empirical distribution (four probabilities in all). Which one had a closer agreement between the two methods?
+
+
+The following calculations helped me to learn how to set up the calculations of probabilities for this question 
+
+```{r}
+1 - pnorm(q = 600, mean = dqmean, sd = dqsd)
+```
+
+```{r}
+dairy_queen |> 
+  filter(cal_fat > 600) |>
+  summarise(percent = n() / nrow(dairy_queen))
+```
+
+
+```{r}
+mcdonalds |> 
+  filter(cal_fat > 600) |>
+  summarise(percent = n() / nrow(mcdonalds))
+```
+
+
+The two probabilities I set out to calculate are the probability of finding an item in the menu that has calories from fat "around" the mean. In other words, I want to calculate the probability of the item being in between the mean minus one standard deviation and the mean plus one standard deviation. In other words, something along these lines: P(mean-sd< x < mean+sd).
+
+First, I work with the calories from fat in the Dairy Queen menu using the theoretical normal distribution. I calculate the probability of a randomly chosen item in the menu  having more than 416 calories from fat. In other words that its calories from fat content is higher than the mean plus one standard deviation.
+```{r}
+1 - pnorm(q = 416, mean = dqmean, sd = dqsd)
+```
+Then I calculate its complement. In other words, the probability below 416 calories
+
+```{r}
+pnorm(q = 416, mean = dqmean, sd = dqsd)
+```
+As it should be, the sum of these two values is 1.
+
+I do the same two steps with 104 calories from fat, i.e. the mean minus one standard deviation. 
+
+```{r}
+1 - pnorm(q = 104, mean = dqmean, sd = dqsd)
+```
+```{r}
+pnorm(q = 104, mean = dqmean, sd = dqsd)
+```
+Again, the sum of the two probabilities equals one. 
+
+Moreover, I can use these values to calculate the probability of finding an item in the menu within the range of the mean minus/plus one standard deviation.
+
+```{r Dairy Queen Probability below the mean plus one sd minus probability below the mean minus one sd}
+(pnorm(q = 416, mean = dqmean, sd = dqsd)) - (pnorm(q = 104, mean = dqmean, sd = dqsd))
+```
+This value is about two thirds of the distribution, in accordance with the theoretical model 
+
+Then I follow exactly the same steps for data abut the menues at McDonald's
+```{r}
+1 - pnorm(q = 505, mean = MDmean, sd = MDsd)
+```
+
+```{r}
+pnorm(q = 505, mean = MDmean, sd = MDsd)
+```
+
+```{r}
+1 - pnorm(q = 65, mean = MDmean, sd = MDsd)
+```
+
+```{r}
+pnorm(q = 65, mean = MDmean, sd = MDsd)
+```
+
+
+```{r McDonalds Probability below the mean plus one sd minus probability below the mean minus one sd}
+(pnorm(q = 505, mean = MDmean, sd = MDsd)) - (pnorm(q = 65, mean = MDmean, sd = MDsd))
+```
+Once more, all the probabilities match what they are supposed to be according to the theoretical model.
+
+Then, I turn to the empirical distributions. I start with the Dairy Queen data.
+
+
+```{r}
+dairy_queen |> 
+  filter(cal_fat > 416) |>
+  summarise(percent = n() / nrow(dairy_queen))
+```
+
+```{r}
+dairy_queen |> 
+  filter(cal_fat < 416) |>
+  summarise(percent = n() / nrow(dairy_queen))
+```
+
+
+```{r}
+dairy_queen |> 
+  filter(cal_fat > 104) |>
+  summarise(percent = n() / nrow(dairy_queen))
+```
+
+
+
+```{r}
+dairy_queen |> 
+  filter(cal_fat < 104) |>
+  summarise(percent = n() / nrow(dairy_queen))
+```
+
+
+
+```{r}
+dairy_queen |> 
+  filter(cal_fat > 104 & cal_fat < 416) |>
+  summarise(percent = n() / nrow(dairy_queen))
+```
+Using the empirical distribution data, the probability on a randomly chosen item in the Dairy Queen menu having calories from fat in the range of mean minus/plus one standard deviation is 71.4% which is a bit above the theoretical value of two thirds  but not "very far". 
+
+In what follows, I carry out exactly the same steps for the Menu at McDonald's.
+
+
+```{r}
+mcdonalds |> 
+  filter(cal_fat > 505) |>
+  summarise(percent = n() / nrow(mcdonalds))
+```
+
+
+```{r}
+mcdonalds |> 
+  filter(cal_fat < 505) |>
+  summarise(percent = n() / nrow(mcdonalds))
+```
+
+```{r}
+mcdonalds |> 
+  filter(cal_fat < 65) |>
+  summarise(percent = n() / nrow(mcdonalds))
+```
+
+```{r}
+mcdonalds |> 
+  filter(cal_fat > 65) |>
+  summarise(percent = n() / nrow(mcdonalds))
+```
+
+
+
+
+```{r}
+mcdonalds |> 
+  filter(cal_fat > 65 & cal_fat < 505) |>
+  summarise(percent = n() / nrow(mcdonalds))
+```
+
+Using the empirical distribution data, the probability on a randomly chosen item in the McDonald's menu having calories from fat in the range of mean minus/plus one standard deviation is 85.9% which is "too far" from the theoretical value of two thirds.
+
+## Exercise 7: Now let’s consider some of the other variables in the dataset. Out of all the different restaurants, which ones’ distribution is the closest to normal for sodium?
+
+The first step is to create data frames for each restaurant. In this way, I can work with the data for each restaurant separately.
+
+```{r}
+ TBell <- fastfood |>
+  filter(restaurant == "Taco Bell")
+```
+
+
+```{r}
+ Sbway <- fastfood |>
+  filter(restaurant == "Subway")
+```
+
+
+```{r}
+ BK <- fastfood |>
+  filter(restaurant == "Burger King")
+```
+
+
+```{r}
+ Sonic <- fastfood |>
+  filter(restaurant == "Sonic")
+```
+
+```{r}
+ Chick <- fastfood |>
+  filter(restaurant == "Chick Fil-A")
+```
+
+
+```{r}
+ Arbys <- fastfood |>
+  filter(restaurant == "Arbys")
+```
+
+For each restaurant, the distribution of items with sodium is explored using the normal probability plot and the simulation from a normal distribution with the same parameters (mean and standard deviation) as the sample ones for each restaurant. 
+
+
+
+```{r}
+TBmean <- mean(TBell$sodium)
+TBsd   <- sd(TBell$sodium)
+```
+
+
+```{r}
+ggplot(data = TBell, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(TBell), mean = TBmean, sd = TBsd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = TBell)
+```
+
+
+```{r}
+BKmean <- mean(BK$sodium)
+BKsd   <- sd(BK$sodium)
+```
+
+
+```{r}
+ggplot(data = BK, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(BK), mean = BKmean, sd = BKsd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = BK)
+```
+
+
+
+```{r}
+Chmean <- mean(Chick$sodium)
+Chsd   <- sd(Chick$sodium)
+```
+
+
+
+```{r}
+ggplot(data = Chick, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(Chick), mean = Chmean, sd = Chsd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = Chick)
+```
+
+
+```{r}
+Sbwaymean <- mean(Sbway$sodium)
+Sbwaysd   <- sd(Sbway$sodium)
+```
+
+
+
+```{r}
+ggplot(data = Sbway, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(Sbway), mean = Sbwaymean, sd = Sbwaysd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = Sbway)
+```
+
+
+```{r}
+MDSmean <- mean(mcdonalds$sodium)
+MDSsd   <- sd(mcdonalds$sodium)
+```
+
+
+
+```{r}
+ggplot(data = mcdonalds, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(mcdonalds), mean = MDSmean, sd = MDSsd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = mcdonalds)
+```
+
+
+```{r}
+dqsmean <- mean(dairy_queen$sodium)
+dqssd   <- sd(dairy_queen$sodium)
+```
+
+
+
+```{r}
+ggplot(data = dairy_queen, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(dairy_queen), mean = dqsmean, sd = dqssd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = dairy_queen)
+```
+
+
+```{r}
+Arbysmean <- mean(Arbys$sodium)
+Arbyssd   <- sd(Arbys$sodium)
+```
+
+
+
+```{r}
+ggplot(data = Arbys, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(Arbys), mean = Arbysmean, sd = Arbyssd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = Arbys)
+```
+
+
+```{r}
+Sonicmean <- mean(Sonic$sodium)
+Sonicsd   <- sd(Sonic$sodium)
+```
+
+
+
+```{r}
+ggplot(data = Sonic, aes(sample = sodium)) + 
+geom_line(stat = "qq")
+```
+
+
+
+```{r}
+sim_norm <- rnorm(n = nrow(Sonic), mean = Sonicmean, sd = Sonicsd)
+```
+
+```{r}
+qqnormsim(sample = sodium, data = Sonic)
+```
+
+Most of the 'real data' distributions deviate from the theory-based simulations. Thus, it cannot be inferred the empirical distributions are based on a normal distribution.
+
+Moreover, they have peculiar shapes. For instance, the Dairy Queen empirical distributions seems to have "jumps". For Chick-fil-A, Sonic, and McDonald's the distribution seems to start deviating from the diagonal line, then it has "kink" which direct the line towards the middle (but the line is not in or parallel to the diagonal).
+
+Finally, for Arbys, the empirical line does seem to have "steps".
+
+## Exercise 8: Note that some of the normal probability plots for sodium distributions seem to have a stepwise pattern. why do you think this might be the case?
+
+One common reason for this stepwise pattern is rounding of values, which leads to some "lumpiness". However, the sodium content should be, in principle, a continuous variable.
+
+Nevertheless, I checked for this possibility. I selected just the sodium content for the Arbys menu.
+
+```{r}
+Arbys|>
+ select(sodium)|>
+ summary()
+```
+Other than the mean, which is calculated with a formula, all the other values are multiples of ten. Then, perhaps, there is an effect similar to rounding in the way the sodium content is measured.
+
+Intrigued, I also checked for Dairy Queen. The results are similar, other than the minimum value (15). There must be ties for the first and third quartiles which result in values with decimal points. The ties may be a another reason for the setpwise shape and the "jump" I observed for the Dairy Queen menu.
+
+
+```{r}
+dairy_queen|>
+ select(sodium)|>
+ summary()
+```
+
+I have checked all the other restaurant chains and the results are similar. I am only reproducing below the one for Sonic, as it is the clearest. Only the mean is not rounded to 10. Neither the first nor the third quartile have values not rounded to 10, which does happen in a few other restaurants. As explained above, as these values are averages of two points, it does not invalidate the argument proposed here.
+
+
+```{r}
+Sonic|>
+ select(sodium)|>
+ summary()
+```
+
+## Exercise 9: As you can see, normal probability plots can be used both to assess normality and visualize skewness. Make a normal probability plot for the total carbohydrates from a restaurant of your choice. Based on this normal probability plot, is this variable left skewed, symmetric, or right skewed? Use a histogram to confirm your findings.
+
+For this exercise, I have chosen Burger King. The plots are below.
+
+```{r}
+ggplot(data = BK, aes(sample = total_carb)) + 
+geom_line(stat = "qq")
+```
+
+The line doe snot seem to be far from the diagonal. However, by itself, this does not mean the curve is based on a normal distribution. Thus, I made a histogram.
+
+```{r}
+ggplot(data = Chick, aes(x = total_carb)) +
+geom_blank() +
+geom_histogram(aes(y = ..density..)) +
+stat_function(fun = dnorm, args = c(mean = Chmean, sd = Chsd), col = "tomato")
+```
+
+The distribution is quite symmetrical, except there may be a bit more cases on the left than on the right. However, the density seems to represent a uniform distribution.
+
+The statistical function in the second layer of the graph (the red line) seems to corroborate this result. It is  a flat line.
