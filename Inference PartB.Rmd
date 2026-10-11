@@ -1,0 +1,163 @@
+---
+title: "Inference Part B"
+author: "Enrique Delamonica"
+date: "2026-10-10"
+output: html_document
+---
+
+## Preliminaries
+These are a few commands to include the libraries and data to be used. I find it useful to  see the errors and allow RMarkdown to continue knitting when there are errors. Thus, I included "error = TRUE".
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+```{r libraries}
+library(tidyverse)
+library(openintro)
+library(infer)
+```
+
+The data for the exercise and a graph, following the exercise instructions.
+
+```{r}
+us_adults <- tibble(climate_change_affects = c(rep("Yes", 62000), rep("No", 38000)))
+```
+
+```{r}
+ggplot(us_adults, aes(x = climate_change_affects)) +
+  geom_bar() +
+  labs(x = "", y = "",
+    title = "Do you think climate change is affecting your local community?") +
+  coord_flip()
+```
+
+```{r}
+us_adults |>
+  count(climate_change_affects) |>
+  mutate(p = n /sum(n))
+```
+
+```{r}
+n <- 60
+samp <- us_adults %>%
+  sample_n(size = n)
+```
+
+## Exercise 1: What percent of the adults in your sample think climate change affects their local community?
+
+
+```{r}
+set.seed(11358)
+samp |>
+  count(climate_change_affects) |>
+  mutate(p = n /sum(n))
+```
+
+In this sample, the proportion of adults who think climate change affects the local community is larger than in the total population. It is closer to 70 per cent (.68).
+
+## Exercise 2: Would you expect another student’s sample proportion to be identical to yours? Would you expect it to be similar? Why or why not?
+
+As with all random sampling, the results in each sample would vary. Thus, I would not expect another student's results to be identical. However, both of us should have results close to the population value (0.62).
+
+
+## Exercise 3: In the interpretation above, we used the phrase “95% confident”. What does “95% confidence” mean?
+
+In the exercise instructions, we have an example about the construction of confidence intervals:
+
+```
+samp |>
+  specify(response = climate_change_affects, success = "Yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level 
+         = 0.95)
+```
+
+In that example, the confidence interval (at 95%) is between 0.517 and 0.767. 
+
+This means that repeating this procedure 100 times, we expect the interval constructed this way would encapsulate the population-wide parameter value (0.62) 95 percent of the time.
+
+## Exercise 4: Does your confidence interval capture the true population proportion of US adults who think climate change affects their local community? If you are working on this lab in a classroom, does your neighbor’s interval capture this value?
+
+In order to calculate a confidence interval using my sample, I use:
+
+
+```{r}
+set.seed(11358)
+samp |>
+  specify(response = climate_change_affects, success = "Yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+The result, a confidence interval between 0.57 and 0.8, does capture the population-wide value (0.62).
+
+Although I am not doing the exercise in a classroom, I would expect a random fellow student to obtain a confidence interval that includes the population-wide value.I.e. I would expect 95 out of 100 students to do so!  
+
+## Exercise 5: Each student should have gotten a slightly different confidence interval. What proportion of those intervals would you expect to capture the true population mean? Why?
+
+If we were 100 students, I would expect 95 of us to obtain a confidence interval that includes 0.62.
+
+## Exercise 6: Given a sample size of 60, 1000 bootstrap samples for each interval, and 50 confidence intervals constructed (the default values for the above app), what proportion of your confidence intervals include the true population proportion? Is this proportion exactly equal to the confidence level? If not, explain why. Make sure to include your plot in your answer.
+
+
+
+## Exercise 7: Choose a different confidence level than 95%. Would you expect a confidence interval at this level to me wider or narrower than the confidence interval you calculated at the 95% confidence level? Explain your reasoning.
+
+For this exercise I would use a confidence interval of 90%. In other words, it will be less reliable than the one in the previous exercises because the population-wide proportion will be expected to be included in 90 out of a 100 times as opposed to 95 times. A narrower confidence interval has more chances of missing the population-wide value than a wider one.
+
+
+```{r}
+set.seed(11358)
+samp |>
+  specify(response = climate_change_affects, success = "Yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.90)
+```
+
+In this case, the confidence interval is a bit narrower than before, as expected.
+
+## Exercies 8: Using code from the infer package and data from the one sample you have (samp), find a confidence interval for the proportion of US Adults who think climate change is affecting their local community with a confidence level of your choosing (other than 95%) and interpret it.
+
+For this exercise I would use a confidence interval of 99%. As this confidence interval is expected to include the population-wide value more often, it has to cast a wider net. Thus, it would be wider than the confidence interval at 95%
+
+
+```{r}
+set.seed(11358)
+samp |>
+  specify(response = climate_change_affects, success = "Yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.99)
+```
+
+The confidence interval at 99% is between 0.53 and 0.83. This interval is wider than at 95% confidence, which was between 0.56 and 0.8.
+
+## Exercise 9: Using the app, calculate 50 confidence intervals at the confidence level you chose in the previous question, and plot all intervals on one plot, and calculate the proportion of intervals that include the true population proportion. How does this percentage compare to the confidence level selected for the intervals?
+
+
+
+## Exercise 10: Lastly, try one more (different) confidence level. First, state how you expect the width of this interval to compare to previous ones you calculated. Then, calculate the bounds of the interval using the infer package and data from samp and interpret it. Finally, use the app to generate many intervals and calculate the proportion of intervals that are capture the true population proportion.
+
+
+For this exercise, I am choosing a confidence level of 97 per cent. In other words in between 95 and 99 percent. Thus, I expect the bounds of the confidence interval to be between the ones calculated above for confidence levels of 95 and 99 percent in the previous exercises. 
+
+```{r}
+set.seed(11358)
+samp |>
+  specify(response = climate_change_affects, success = "Yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.97)
+```
+The values of the bounds of the confidence interval for 97 per cent fall neatly in between the bounds of the confidence intervals estimated above for confidence levels of 95 and 99 percent.
+
+## Exercise 11: Using the app, experiment with different sample sizes and comment on how the widths of intervals change as sample size changes (increases and decreases).
+
+
+
+
+## Exercise 12: Finally, given a sample size (say, 60), how does the width of the interval change as you increase the number of bootstrap samples. Hint: Does changing the number of bootstap samples affect the standard error?
+

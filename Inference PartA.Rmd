@@ -1,0 +1,459 @@
+---
+title: "Inference Part A"
+author: "Enrique Delamonica"
+date: "2026-10-10"
+output: html_document
+---
+## Preliminaries
+These are a few commands to include the libraries and data to be used. I find it useful to  see the errors and allow RMarkdown to continue knitting when there are errors. Thus, I included "error = TRUE".
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+These are the libraries I am likely to need.
+
+```{r libraries}
+library(tidyverse)
+library(openintro)
+library(infer)
+```
+
+
+## Data
+
+These are the data for the exercise.
+
+```{r}
+global_monitor <- tibble(  scientist_work = c(rep("Benefits", 80000), rep("Doesn't benefit", 20000)))
+```
+
+And a visual, following the exercise instructions.
+
+```{r}
+ggplot(global_monitor, aes(x = scientist_work)) +
+  geom_bar() +
+  labs(x = "", y = "",
+    title = "Do you believe that the work scientists do benefit people like you?") +
+  coord_flip() 
+```
+
+The proportions of the people who believe (or not) that science is beneficial.
+
+```{r}
+global_monitor |>
+  count(scientist_work) |>
+  mutate(p = n /sum(n))
+```
+
+Following the instructions, a sample of size 50 is generated.
+
+```{r}
+set.seed(11358)
+samp1 <- global_monitor |>
+  sample_n(50)
+```
+
+## Exercise 1: Describe the distribution of responses in this sample. How does it compare to the distribution of responses in the population.
+
+The sample proportion is called "samplep" here.
+
+```{r}
+set.seed(11358)
+samp1 |>
+  count(scientist_work) |>
+  mutate(samplep = n /sum(n))
+```
+
+The sample proportions are very similar to the population ones. If they were rounded to the first decimal, they would be the same.
+
+
+## Exercise 2: Would you expect the sample proportion to match the sample proportion of another student’s sample? Why, or why not? If the answer is no, would you expect the proportions to be somewhat different or very different? Ask a student team to confirm your answer.
+
+No, because of sampling variation. However, it should be similar.
+
+As I could not ask another student, I did a couple of other examples. I used sample sizes of 50 and 16.
+
+```{r}
+set.seed(11357)
+sampAgain <- global_monitor |>
+  sample_n(50)
+```
+
+
+```{r}
+sampAgain |>
+  count(scientist_work) |>
+  mutate(sample50p = n /sum(n))
+```
+
+
+
+```{r}
+set.seed(11357)
+samp16 <- global_monitor |>
+  sample_n(16)
+```
+
+
+```{r}
+samp16 |>
+  count(scientist_work) |>
+  mutate(sample16p = n /sum(n))
+```
+
+The sample proportions were similar. As expected, they were not identical.
+
+
+### Exercise 3: Take a second sample, also of size 50, and call it samp2. How does the sample proportion of samp2 compare with that of samp1? Suppose we took two more samples, one of size 100 and one of size 1000. Which would you think would provide a more accurate estimate of the population proportion?
+
+```{r}
+set.seed(12578)
+samp2 <- global_monitor |>
+  sample_n(50)
+```
+
+
+```{r}
+samp2 |>
+  count(scientist_work) |>
+  mutate(sample2p = n /sum(n))
+```
+The sample proportions in this case are very similar to the ones in the two other samples of size 50 in the previous exercise.
+
+```{r}
+set.seed(11358)
+samp100 <- global_monitor |>
+  sample_n(100)
+```
+
+
+
+```{r}
+samp100 |>
+  count(scientist_work) |>
+  mutate(sample100p = n /sum(n))
+```
+
+
+
+```{r}
+set.seed(11358)
+samp1000 <- global_monitor |>
+  sample_n(1000)
+```
+
+
+
+```{r}
+samp1000 |>
+  count(scientist_work) |>
+  mutate(sample1000p = n /sum(n))
+```
+
+The larger sample should be more accurate. This point is not based on the additional decimals. The reason is that in the limit, a sample size equal to the  population size would be very accurate (actually, it would be the same!). However, it is not worth it to use such large samples.
+
+## Exercise 4: How many elements are there in sample_props50? Describe the sampling distribution, and be sure to specifically note its center. Make sure to include a plot of the distribution in your answer.
+
+Per the exercise instructions, sample_props50 is based on 15,000 repetitions of samples of size 50.
+
+```{r}
+set.seed(11358)
+sample_props50 <- global_monitor |>
+                    rep_sample_n(size = 50, reps = 15000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+
+```{r}
+ggplot(data = sample_props50, aes(x = samples_p)) +
+  geom_histogram(binwidth = 0.02) +
+  labs(x = "samples_p (Doesn't benefit)",
+    title = "Sampling distribution of samples_p",
+    subtitle = "Sample size = 50, Number of samples = 15000")
+```
+
+Thus, there are 15,000 observations, each one built on a sample of size 50.
+The distribution is almost perfectly symmetrical.
+It is centered just off from 0.2 (the population value for people who believe science does not benefit them).
+
+
+## Exercise 5: To make sure you understand how sampling distributions are built, and exactly what the rep_sample_n function does, try modifying the code to create a sampling distribution of 25 sample proportions from samples of size 10, and put them in a data frame named sample_props_small. Print the output. How many observations are there in this object called sample_props_small? What does each observation represent?
+
+Following the example in the previous exercise, 25 repetitions creating samples of size 10 are carried out.
+
+```{r}
+set.seed(11358)
+sample_props_small <- global_monitor |>
+                    rep_sample_n(size = 10, reps = 25, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+```{r}
+print(sample_props_small, n = 25)
+```
+The print out shows there are 25 observations (each made of the sample proportion based on samples of size 10).
+
+However, it is not easy to see the distribution. Thus, a graph can help.
+
+```{r}
+ggplot(data = sample_props_small, aes(x = samples_p)) +
+  geom_histogram(binwidth = 0.02) +
+  labs(x = "samples_p (Doesn't benefit)",
+    title = "Sampling distribution of samples_p",
+    subtitle = "Sample size = 10, Number of samples = 25") 
+```
+
+
+Although I was expecting a more symmetrical distribution, the bulk of the observations are around the population proportion (i.e. 0.2).
+
+
+## Exercise 6: Use the app below to create sampling distributions of proportions of Doesn’t benefit from samples of size 10, 50, and 100. Use 5,000 simulations. What does each observation in the sampling distribution represent? How does the mean, standard error, and shape of the sampling distribution change as the sample size increases? How (if at all) do these values change if you increase the number of simulations? (You do not need to include plots in your answer.)
+
+As I could not find the app, I have calculated all six cases. I.e. 5,000 simulations for sample sizes of 10 50, and 100. And the same sample sizes but with 10,000 simulations. In each case, an observation is the proportion of people in the sample who believe science does not improve their lives.
+
+```{r}
+set.seed(11358)
+sample_props10 <- global_monitor |>
+                    rep_sample_n(size = 10, reps = 5000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+
+```{r}
+set.seed(11358)
+sample_props50 <- global_monitor |>
+                    rep_sample_n(size = 50, reps = 5000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+
+```{r}
+set.seed(11358)
+sample_props100 <- global_monitor |>
+                    rep_sample_n(size = 100, reps = 5000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+
+
+```{r}
+
+sample_props10_10K <- global_monitor |>
+                    rep_sample_n(size = 10, reps = 10000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+
+```{r}
+set.seed(11358)
+sample_props50_10K <- global_monitor |>
+                    rep_sample_n(size = 50, reps = 10000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+
+```{r}
+set.seed(11358)
+sample_props100_10k <- global_monitor |>
+                    rep_sample_n(size = 100, reps = 10000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter(scientist_work == "Doesn't benefit")
+```
+
+The summary for each of the six cases:
+
+```{r}
+mean10_5 = mean(sample_props10$samples_p)
+sd10_5 = sd(sample_props10$samples_p)
+mean10_5
+sd10_5
+```
+
+
+```{r}
+mean50_5 = mean(sample_props50$samples_p)
+sd50_5 = sd(sample_props50$samples_p)
+mean50_5
+sd50_5
+```
+
+
+```{r}
+mean100_5 = mean(sample_props100$samples_p)
+sd100_5 = sd(sample_props100$samples_p)
+mean100_5
+sd100_5
+```
+
+
+
+```{r}
+mean10_10 = mean(sample_props10_10K$samples_p)
+sd10_10 = sd(sample_props10_10K$samples_p)
+mean10_10
+sd10_10
+```
+
+
+```{r}
+mean50_10 = mean(sample_props50_10K$samples_p)
+sd50_10 = sd(sample_props50_10K$samples_p)
+mean50_10
+sd50_10
+```
+
+
+```{r}
+mean100_10 = mean(sample_props100_10k$samples_p)
+sd100_10 = sd(sample_props100_10k$samples_p)
+mean100_10
+sd100_10
+```
+
+First of all, in all six cases the mean across the 5,000 and the 10,000 repetitions is very similar. For samples of size 10, the mean is a bit above the actual population value (0.22>0.2) whether the repetitions are 5,000 or 10,000.
+
+The variability, measured by the standard deviation, is about twice as large for samples of size 10 compared to samples of size 50 or 100 independently of the number of repetitions. Interestingly, the difference between samples of 50 and 100 is minimal (basically, when rounding, between 0.06 and 0.04). There is a tiny difference when the number of repetitions is doubled, but it is only observable only at the fourth decimal). 
+
+## Exercise 7: Take a sample of size 15 from the population and calculate the proportion of people in this sample who think the work scientists do enhances their lives. Using this sample, what is your best point estimate of the population proportion of people who think the work scientists do enchances their lives?
+
+
+The sample of size 15 is generated.
+
+```{r}
+set.seed(11358)
+samp15 <- global_monitor |>
+  sample_n(15)
+```
+
+
+
+```{r}
+samp15 |>
+  count(scientist_work) |>
+  mutate(sample15p = n /sum(n))
+```
+I had to rerun  the simulation because first time all 15 persons in the sample were people who agreed science benefits their life. Although this is perfectly valid result, it seemed too unreal to provide a point estimate such that everybody agreed science benefits their life.
+
+In the second run, with a sample proportion of 0.67, a possible point estimate would be 0.7, i.e. rounding to just one decimal.
+
+
+## Exercise 8: Since you have access to the population, simulate the sampling distribution of proportion of those who think the work scientists do enchances their lives for samples of size 15 by taking 2000 samples from the population of size 15 and computing 2000 sample proportions. Store these proportions in as sample_props15. Plot the data, then describe the shape of this sampling distribution. Based on this sampling distribution, what would you guess the true proportion of those who think the work scientists do enchances their lives to be? Finally, calculate and report the population proportion.
+
+
+
+```{r}
+set.seed(11358)
+sample_props15 <- global_monitor |>
+                    rep_sample_n(size = 15, reps = 2000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter_out(scientist_work == "Doesn't benefit")
+```
+
+
+
+```{r}
+ggplot(data = sample_props15, aes(x = samples_p)) +
+  geom_histogram(binwidth = 0.02) +
+  labs(x = "samples_p (Does benefit)",
+    title = "Sampling distribution of samples_p",
+    subtitle = "Sample size = 15, Number of samples = 2000")
+```
+
+Based on this histogram, which peaks at 0.8 and is roughly symmetrical, I would guess the population proportion of people who think science improves their lives is 0.8.
+
+There is a very small proportion of samples in which the persons in the sample who agree that science improves their lives is 0.6 or less. Even samples in which the proportion is less then 0.7 is very small.
+
+Obviously the proportion cannot be larger than 1, which explains why the graph is not fully symmetrical. Nevertheless it is interesting to note that there are relatively few cases of samples in which the proportion of persons thinking science benefits their life is more than 0.9 (which includes a few cases where everybody in the sample agrees that science improves their lives).
+
+These results are consistent with the population proportion of 0.8.
+
+
+
+
+## Exercise 9: Change your sample size from 15 to 150, then compute the sampling distribution using the same method as above, and store these proportions in a new object called sample_props150. Describe the shape of this sampling distribution and compare it to the sampling distribution for a sample size of 15. Based on this sampling distribution, what would you guess to be the true proportion of those who think the work scientists do enchances their lives?
+
+
+The 2,000 repetitions of samples of size 150 are calculated and graphed.
+
+```{r}
+set.seed(11358)
+sample_props150 <- global_monitor |>
+                    rep_sample_n(size = 150, reps = 2000, replace = TRUE) |>
+                    count(scientist_work) |>
+                    mutate(samples_p = n /sum(n)) |>
+                    filter_out(scientist_work == "Doesn't benefit")
+```
+
+
+
+```{r}
+ggplot(data = sample_props150, aes(x = samples_p)) +
+  geom_histogram(binwidth = 0.02) +
+  labs(x = "samples_p (Does benefit)",
+    title = "Sampling distribution of samples_p",
+    subtitle = "Sample size = 150, Number of samples = 2000")
+```
+
+In this case, the sample proportions are also clustered around 0.8. The distribution seems almost perfectly symmetrical.
+There are two major differences with the previous exercise. One is that there are less "extreme cases", i.e. close or above 0.7 and 0.9
+The second one is that the larger samples result in proportions with more decimals. Thus, the histogram looks "fuller".
+
+
+## Exercise 10: Of the sampling distributions from 2 and 3, which has a smaller spread? If you’re concerned with making estimates that are more often close to the true value, would you prefer a sampling distribution with a large or small spread?
+
+For each of the four cases in exercise 2 and 3, i.e. samp1 and samp2, which are of size 50, and the samples of size 100 and 1,000 I calculate the mean and standard deviation. However, in these two exercises, there were no repetitions. Thus, only one sample mean and one sample standard deviation are calculated. The mean is the estimated proportion. The sample standard deviation is the square root of the sample proportion times its complement to one, divided by the sample size.
+
+
+```{r}
+set.seed(11358)
+samp1 |>
+  count(scientist_work) |>
+  mutate(samplep = n /sum(n))|>
+mutate(samplepSTDEV = sqrt((n /sum(n)) *(1-(n /sum(n)))/sum(n)))
+```
+
+```{r}
+samp2 |>
+  count(scientist_work) |>
+  mutate(sample2p = n /sum(n))|>
+  mutate(samplepSTDEV = sqrt((n /sum(n)) *(1-(n /sum(n)))/sum(n)))
+```
+
+
+
+
+```{r}
+samp100 |>
+  count(scientist_work) |>
+  mutate(sample100p = n /sum(n))|>
+  mutate(samplepSTDEV = sqrt((n /sum(n)) *(1-(n /sum(n)))/sum(n)))
+```
+
+
+
+
+
+```{r}
+samp1000 |>
+  count(scientist_work) |>
+  mutate(sample1000p = n /sum(n))|>
+  mutate(samplepSTDEV = sqrt((n /sum(n)) *(1-(n /sum(n)))/sum(n)))
+```
+
+The sample standard deviation, i.e. the variability of the sample proportion is about 0.05 or 0.6 when the sample size is 50. It is lower, about 0.04, in the sample of size 100. It is even lower, at about 0.015, for the sample size of 1,000. In other words, as the sample size increases, the spread is lower. However, the gains in lower spread do not seem to be linear. Thus, while increasing the sample size is useful, it is only useful up to a certain point. The results may have lower variability but the practical difference may be negligible (as it was discussed in class regarding confidence intervals).  
