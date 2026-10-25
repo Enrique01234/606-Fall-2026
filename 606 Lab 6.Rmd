@@ -1,0 +1,573 @@
+---
+title: "606 Lab 6"
+author: "Enrique Delamonica"
+date: "2026-10-19"
+output: html_document
+---
+## Preliminaries
+These are a few commands to include the libraries to be used. I find it useful to  see the errors and allow RMarkdown to continue knitting when there are errors. Thus, I included "error = TRUE".
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+These are the libraries I am likely to need.
+
+```{r libraries}
+library(tidyverse)
+library(dplyr)
+library(openintro)
+library(infer)
+```
+
+
+## Data
+
+These are the data for the exercise.
+
+```{r}
+data('yrbss', package='openintro')
+```
+
+
+```{r}
+yrbss
+```
+
+
+## Exercise 1: What are the counts within each category for the amount of days these students have texted while driving within the past 30 days?
+
+The count command automatically shows the categories for the variable "text_while_driving_30d" together with how many observations are in each of them.
+```{r}
+yrbss|>
+ count(text_while_driving_30d)
+```
+
+There are eight categories (not counting the almost 1,000 cases of no data). Adding across all the rows, including the NAs, the tibble does include all 13,583 observations in the yrbss data frame.
+
+In the tibble the categories are not organized by the amount of days the respondents texted while driving. They are ranked "alphabetically". This is why "10-19" comes after "1-2" but "3-5" is lower in the tibble and not right after "1-2".
+
+While about a third of the students (4,646 out of 13,583) did not drive at all, about around another third did not text while driving. However, not only have almost one out four students (3,227 out of 13,583) texted while driving, almost a thousand of them did so everyday.
+
+
+## Exercise 2: What is the proportion of people who have texted while driving every day in the past 30 days and never wear helmets?
+
+From the results above, about 6 per cent of students in the sample texted while driving every day out of the last 30 days. However, some of them might wear helmets (or not) when biking (according to the information in the Help tab, this question is only about biking and not other sports/activities). Also, these students may not be representative of the whole population.
+
+Following the exercise instructions, first, a new data frame of students who never wear helmets is created. 
+
+```{r}
+no_helmet <- yrbss |>
+  filter(helmet_12m == "never")
+```
+
+Secondly, within this smaller data frame a new variable of students who texted while driving every day during the last 30 days is created. 
+
+
+```{r}
+no_helmet <- no_helmet |>
+  mutate(text_ind = ifelse(text_while_driving_30d == "30", "yes", "no"))
+```
+
+```{r}
+no_helmet
+```
+
+
+```{r}
+no_helmet|>
+ count(text_ind)
+```
+
+Out of the 6,977 students in the sample who never wear a helmet, 463 have texted while driving every day of the last 30 days.This represents about 7.5 percent of the sampled students who never wear a helmet and about 3.5 percent of all students in the sample. 
+
+As explained in class, with a large sample, sub-groups can be used to estimate total population parameters. So  it could be inferred the same proportion (3.5 percent) would apply to the whole population.
+
+
+## Exercise 3: What is the margin of error for the estimate of the proportion of non-helmet wearers that have texted while driving each day for the past 30 days based on this survey?
+
+Following the instructions of the exercise, the bootstrap method is used to calculate the confidence interval around the sample proportion.
+
+```{r}
+set.seed(11358)
+no_helmet |>
+  specify(response = text_ind, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+However, the error message seemed to indicate that R is not able to calculate the proportion of success cases in  "text_ind". Assuming this could be due to the NAs, I tried to remove them.
+
+
+```{r}
+set.seed(11358)
+no_helmet |>
+  specify(response = text_ind, success = "yes", na.rm = TRUE) |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+However, R did not construct the confidence interval. It did not use the remove NAs argument. Thus, I decided to filter them out. I created a new data frame called "no_helmet2".
+
+```{r}
+no_helmet2 <- no_helmet |>
+  filter_out(is.na(text_ind))
+```
+
+
+```{r}
+no_helmet2|>
+ count(text_ind)
+```
+
+The new data frame, obviously, has less observations. However, none of them is an NA.
+
+
+```{r}
+set.seed(11358)
+no_helmet2 |>
+  specify(response = text_ind, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+Now a confidence interval is generated. It indicates that, with 95 percent confidence, the population proportion of persons who never wear a helmet and text by while driving every day ranges within 6.5 and 7.8 percent.
+
+## Exercise 4: Using the infer package, calculate confidence intervals for two other categorical variables (you’ll need to decide which level to call “success”, and report the associated margins of error. Interpet the interval in context of the data. It may be helpful to create new data sets for each of the two countries first, and then use these data sets to construct the confidence intervals.
+
+As I intended to analyze the amount of hours spent watching TV during school nights for different age groups, I explore the distribution by grade.
+
+
+```{r}
+yrbss|>
+  count(grade)
+```
+
+The sample is rather evenly distributed across the four high school grades. I choose the Seniors
+
+
+```{r}
+seniors <- yrbss |>
+  filter(grade == "12")
+```
+
+```{r}
+seniors
+```
+
+Then I explored the variable "hours_tv_per_school_day". While most of its categories are numbers, the last (5+) is not. Thus, I consider it a categorical variable. Moreover, with this information, I create a new variable which is dichotomous: either the student watches some TV on school nights or not.
+
+```{r}
+seniors|>
+ count(hours_tv_per_school_day)
+```
+
+
+```{r}
+seniors <- seniors |>
+  mutate(noTV = ifelse(hours_tv_per_school_day == "do not watch", "yes", "no"))
+```
+
+Then, for the reasons explained in the previous exercise, I filter out the NAs. I did go through the same steps as in the previous exercise and R did not construct the confidence intervals when NAs were present.
+
+```{r}
+seniors2 <- seniors |>
+  filter_out(is.na(hours_tv_per_school_day))
+```
+
+Finally, I constructed the confidence interval.
+
+```{r}
+set.seed(11358)
+seniors2 |>
+  specify(response = noTV, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+The point estimate  of the proportion of Seniors who do not watch TV during school nights is 15.3 (537/3498 as per the data in the tibble). Most importantly, with 95% confidence it can be established that the population proportion is between 14.2 and 16.4 percent .
+
+For the second example I explore physical activity among girls. First I create a new data frame ("Girls").
+
+```{r}
+Girls <- yrbss |>
+     filter(gender == "female")
+```
+
+
+```{r}
+Girls
+```
+
+Them within this data frame, I analyze their level of physical activity. I use the variable "physically_active_7d", which measures
+how many days they were physically active for at least 60 minutes in the last 7 days.
+
+
+```{r}
+Girls|>
+ count(physically_active_7d)
+```
+
+As explained above, I filter out the NAs.
+
+```{r}
+Girls2 <- Girls |>
+  filter_out(is.na(physically_active_7d))
+```
+
+```{r}
+Girls2
+```
+
+
+I generate a new variable which indicates if the level of exercise is low (two or less days engaged in physical activity of at least 60 minutes) or not. The variable is called "lowexer".
+
+```{r}
+Girls2 <- Girls2 |>
+  mutate(lowexer = ifelse(physically_active_7d <= "2", "yes", "no"))
+```
+
+Them I calculate the confidence interval.
+
+```{r}
+set.seed(11358)
+Girls2 |>
+  specify(response = lowexer, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+Then I follow the same steps for boys.
+
+
+```{r}
+Boys <- yrbss |>
+     filter(gender == "male")
+```
+
+It can be observed that the the total observations for boys and girls do not add up to total in yrbss. This is due to the filtering out of the NAs. A fuller exploration is provided in Exercise 9, which is not included here to avoid repetition. 
+
+```{r}
+Boys
+```
+
+I use the same threshold to establish which boys are not very physically active as I used for girls.
+
+
+```{r}
+Boys|>
+ count(physically_active_7d)
+```
+
+
+```{r}
+Boys2 <- Boys |>
+  filter_out(is.na(physically_active_7d))
+```
+
+```{r}
+Boys2
+```
+
+```{r}
+Boys2 <- Boys2 |>
+  mutate(lowexer = ifelse(physically_active_7d <= "2", "yes", "no"))
+```
+
+
+
+```{r}
+set.seed(11358)
+Boys2 |>
+  specify(response = lowexer, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+There a significant difference between boys and girls. With 95 per cent confidence, we can say that the proportion of girls who are not much involved in physical activity is between 41.5 and 43.8 percent. However, for boys, it is between 22.9 and 24.8. These confidence intervals do not overlap. 
+
+
+## Exercise 5: Describe the relationship between p and me. Include the margin of error vs. population proportion plot you constructed in your answer. For a given sample size, for which value of p is margin of error maximized?
+
+Following the instructions in the exercise
+
+```{r}
+n <- 1000
+```
+
+
+```{r}
+p <- seq(from = 0, to = 1, by = 0.01)
+me <- 2 * sqrt(p * (1 - p)/n)
+```
+
+```{r}
+dd <- data.frame(p = p, me = me)
+ggplot(data = dd, aes(x = p, y = me)) + 
+  geom_line() +
+  labs(x = "Population Proportion", y = "Margin of Error")
+```
+
+Starting fron 0, as the population proportion increases, the margin of error increases (non-linearly, i.e. increases are steep at the beginning and then they flatten out). Then they start to go down. First, they go down slowly, then quickly.
+This a parabola, with the maximum at p=0.5.
+The margin of error is 0 at the extremes, because, if the population proportion of success is 1, then no matter the size of the sample (even if it is not random!) all observations will be "success". Only "success" can be found in this population.
+
+Once small probabilities of not getting all "success" appear, the margin of error increases. It is small because the probability of not finding "success" are small. These chances keep on increasing
+However, at 50/50, the chances are at a maximum because, after that point, the chances start to tilt towards "no success". When the probability of "no success" keeps on increasing, the chances the sample will include many "no successes" keep on increasing, which reduces the margin of error. Eventually it disappears at "no success" = 1 (i.e. success = 0) due ot the same logic that applies at the other extreme.
+
+
+
+## Exercise 6: Describe the sampling distribution of sample proportions at n=300 and p=0.1 . Be sure to note the center, spread, and shape.
+
+As I did not know which app I need to use, I Googled:
+
+"app sampling distribution of sample proportions at n=300"
+
+I have found several links, but the one I used, which proved useful (and relatively easy to use), is:
+
+https://istats.shinyapps.io/SampDist_Prop/
+
+
+I have set up the sample size at 300 and the value for p at 0.1. The app allowed to me do 1,000 simulations.
+
+The distribution follows a Bell Curve, with mean of 0.1 and standard deviation of 0.017. The IQR (Inter Quartile Range) is 0.02
+
+
+## Exercise 7: Keep n  constant and change p . How does the shape, center, and spread of the sampling distribution vary as p  changes. You might want to adjust min and max for the x -axis for a better view of the distribution.
+
+For this exercise I have asked the app to change  the population proportion from 0.1 to:
+
+0.2
+0.4
+0.5
+0.7
+0.9
+
+I have also asked for 1,000 simulations each time.
+
+The shape was always similar to a Bell Curve. Obviously, the mean across the samples kept on increasing and always matching the population mean. 
+
+The standard deviation also increased, from 0.02 to 0.028 for p= 0.5. However, for p= 0.4 and p= 0.7, the standard deviation was 0.029 and 0.027 respectively. Nevertheless, for p = 0.9 it was 0.018.
+
+The IQR also increased, reaching 0.04 at p= 0.4 and 0.037 for both p= 0.5 and p=0.7. However, it declined again for p= 0.9, reaching  0.023.
+
+Thus, the standard deviation and the IQR show a shape similar to the one n Exercise 5 for the margin of error.
+
+
+## Exercise 8: Now also change n . How does n  appear to affect the distribution of p^?
+
+Then, I changed the sample size (keeping p = 0.1), between 300 and 5. I asked the app for 1,000 simulations for sample sizes of: 
+
+200
+100
+50
+15
+10
+5
+
+The sample mean across the samples for the sample proportion hovered around 0.1 but with the distance to 0.1 increasing. For instance, at n = 100, the mean value across samples was 0.99, at n = 5 it was 0.095.
+
+Both the standard deviation and the IQR increased with smaller sample sizes. The former went from 0.02 to 0.131 (at n  = 5) while the latter increased from 0.03 to 0.2 (at both n= 10 and n = 5).
+
+Moreover, at n = 100 the distribution was "less dense". I.e., gaps were observed between columns. Furthermore, by n = 15, the distibution was no longer a symmetrical Bell curve 
+
+
+## Exercise 9: Is there convincing evidence that those who sleep 10+ hours per day are more likely to strength train every day of the week? As always, write out the hypotheses for any tests you conduct and outline the status of the conditions for inference. If you find a significant difference, also quantify this difference with a confidence interval.
+
+As in previous exercises, first, a new data frame of those students who strengthen train every day of the week.
+
+```{r}
+yrbss|>
+  count(strength_training_7d)
+```
+
+
+
+
+```{r}
+traindaily <- yrbss |>
+  filter(strength_training_7d == "7")
+```
+
+
+
+```{r}
+traindaily|>
+  count(strength_training_7d)
+```
+
+
+Then I remove the NAs.
+
+
+```{r}
+traindaily2 <- traindaily |>
+  filter_out(is.na(school_night_hours_sleep))
+```
+
+Then I create a nee variable ("sleep") which counts as "yes" those students who sleep 10 or more hours per day.
+
+```{r}
+traindaily2 <- traindaily2 |>
+  mutate(sleep = ifelse(school_night_hours_sleep == "10+", "yes", "no"))
+```
+
+```{r}
+traindaily2
+```
+
+
+
+
+
+```{r}
+traindaily2|>
+  count(school_night_hours_sleep)
+```
+
+There are very few cases of students who sleep 10 or more hours oper day. They are about 4% of the students who strengthen train.
+
+
+```{r}
+set.seed(11358)
+traindaily2 |>
+  specify(response = sleep, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+An issue arises here. What is compared aginst this confidence interval?
+
+I propose to use the opposite, i.e., the proportion of those students who do not strengthen train everyday of the week.
+
+Thus:
+
+H0) Proportion of students who strength train 7 days a week and sleep 10+ hours per day  =  Proportion of students who do not strength train and sleep 10+ hours per day
+H1) Proportion of students who strength train 7 days a week and sleep 10+ hours per day  =/=  Proportion of students who do not strength train and sleep 10+ hours per day
+
+
+A new data frame (nottraindaily) is generated and the same steps as above are carried out.
+
+```{r}
+nottraindaily <- yrbss |>
+  filter(strength_training_7d != "7")
+```
+
+
+```{r}
+nottraindaily|>
+  count(strength_training_7d)
+```
+
+Notice this total (10,322) plus the total in the frame "traindaily" (2085) do not add up to the 13,583 observations in "yrbss". The difference is 1,176 observations. As both of the new data frames only select based on the value of "strengthen_training_7d", the 1,176 missing values are not included in either data frame. This is not  an issue for estimating proportions, as we would have excluded them from the calculations (the way it was done in the previous exercises and it is done in the next step).
+
+
+```{r}
+nottraindaily2 <- nottraindaily |>
+  filter_out(is.na(school_night_hours_sleep))
+```
+
+
+```{r}
+nottraindaily2 <- nottraindaily2 |>
+  mutate(sleep = ifelse(school_night_hours_sleep == "10+", "yes", "no"))
+```
+
+```{r}
+nottraindaily2
+```
+
+
+```{r}
+nottraindaily2|>
+  count(school_night_hours_sleep)
+```
+
+Again, very few cases. They are about 2% of these students.
+
+
+```{r}
+set.seed(11358)
+nottraindaily2 |>
+  specify(response = sleep, success = "yes") |>
+  generate(reps = 1000, type = "bootstrap") |>
+  calculate(stat = "prop") |>
+  get_ci(level = 0.95)
+```
+
+As the upper bound of this confidence interval (2.53 percent)  is lower than the lower bound of the confidence interval of the students who do strengthen training every day of the week (3.18 percent),the null hypothesis that both groups of students sleep at least 10 hours per day is rejected.
+
+
+
+
+
+## Exercise 10: Let’s say there has been no difference in likeliness to strength train every day of the week for those who sleep 10+ hours. What is the probability that you could detect a change (at a significance level of 0.05) simply by chance? Hint: Review the definition of the Type 1 error.
+
+The definition of Type 1 error is: "rejecting the null hypothesis when H0 is actually true". (OpenIntro Statistics, Fourth Edition, Diez,  Cetinkaya-Rundel, and Barr, p. 193).
+
+Thus, the probability of detecting a change or difference (i.e. rejecting H0) when H0 should not be rejected because it is true is 5%. This is the complement to the 95% confidence of not rejecting H0 when it is true.
+
+## Exercise 11: Suppose you’re hired by the local government to estimate the proportion of residents that attend a religious service on a weekly basis. According to the guidelines, the estimate must have a margin of error no greater than 1% with 95% confidence. You have no idea what to expect for p. How many people would you have to sample to ensure that you are within the guidelines? Hint: Refer to your plot of the relationship between p  and margin of error. This question does not require using a dataset.
+
+Following the formula in the exercise instructions for an interval of confdidence of 95%:
+
+ME  = 1.96 * square root (p*(1-p)/n)
+
+In the face of uncertainty regarding the population value of the proportion and in order to err on the side of caution, I use p=.5. This would yield the highest margin of error, the one that should not exceed 1%
+
+Reaplcing ME = 0.01 and p = 0.5:
+
+0.01 = 1.96 * square root(0.5*(1-0.5)/n)
+
+which is equal to:
+
+0.01 = 1.96 * square root(0.5*0.5/n) = 1.96 * 0.5 square root(1/n)
+
+Multiplying both sides by square root (n):
+
+square root (n) * 0.01 = 1.96 * 0.5 = 0.98
+
+Dividing both sides by 0.01:
+
+square root (n) = 0.98/ 0.01 = 98
+
+Squaring both sides:
+
+n = 98^2 = 9604
+
+Two addiitonal steps to double check:
+
+What is ME if n=9604 and p = 0.5?
+
+ME = 1.96 * square root (p*(1-p)/n) 
+
+ME = 1.96 * square root (0.5 * (1-0.5)/9604)
+
+ME = 1.96 * square root (0.5 * 0.5/9604)
+
+ME = 1.96 * 0.5 * square root (1/9604)
+
+ME = 0.98 * square root (0.0001041) = 0.98 * 0.0102041 = 0.01
+
+Secondly, what would the ME be with a smaller sample size, e.g. 9600?
+
+Repeating only to the last two rows from above:
+
+ME = 1.96 * 0.5 * square root (1/9600)
+
+ME = 0.98 * square root (0.0001042) = 0.98 * 0.0102062 = 0.010002
+
+The sample size would not be sufficient to ensure a maximum margin of error of 0.01
+
+
+
+
+
+
